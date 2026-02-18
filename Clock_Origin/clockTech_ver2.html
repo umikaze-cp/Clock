@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>デジタル時計＋カウントダウン</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            --bg: #000;
+            --fg: #b7ffb7;
+            --accent: #7aff7a;
+            --warning: #ff6b6b;
+            --muted: #9aa19a;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            color: var(--fg);
+            background: var(--bg);
+        }
+
+        .wrap {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 24px;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .left {
+            display: grid;
+            place-items: center start;
+        }
+
+        #nowClock {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-weight: 800;
+            font-size: clamp(72px, 12vw, 144px);
+            line-height: 1;
+            letter-spacing: 0.04em;
+            text-shadow: 0 0 8px rgba(122, 255, 122, 0.35);
+        }
+
+        .subdate {
+            color: var(--muted);
+            margin-top: 12px;
+            font-size: clamp(16px, 2.2vw, 24px);
+            font-weight: 600;
+        }
+
+        .right {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 16px;
+        }
+
+        .panel {
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.03);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        }
+
+        .inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .field {
+            display: grid;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 14px;
+            color: var(--muted);
+            font-weight: 600;
+            letter-spacing: 0.02em;
+        }
+
+        input[type="text"],
+        input[type="datetime-local"] {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(0, 0, 0, 0.25);
+            color: var(--fg);
+            outline: none;
+        }
+
+        input::placeholder {
+            color: #6b6f6b;
+        }
+
+        button {
+            padding: 10px 16px;
+            border-radius: 10px;
+            border: 1px solid rgba(122, 255, 122, 0.35);
+            background: rgba(122, 255, 122, 0.15);
+            color: var(--fg);
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .error {
+            margin-top: 8px;
+            color: var(--warning);
+            font-size: 14px;
+            min-height: 1.2em;
+        }
+
+        .list {
+            display: grid;
+            gap: 12px;
+            align-content: start;
+        }
+
+        .item {
+            display: flex;
+            align-items: baseline;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .title {
+            font-weight: 800;
+            letter-spacing: 0.02em;
+        }
+
+        .until {
+            color: var(--muted);
+        }
+
+        .timeleft {
+            margin-left: auto;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-weight: 900;
+            font-size: 28px;
+            letter-spacing: 0.04em;
+            text-shadow: 0 0 6px rgba(122, 255, 122, 0.25);
+        }
+
+        .expired {
+            color: var(--warning) !important;
+            text-shadow: 0 0 10px rgba(255, 60, 60, 0.45);
+        }
+
+        .cap {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 6px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <section class="left">
+            <div>
+                <div id="nowClock">00:00:00</div>
+                <div id="nowDate" class="subdate">0000-00-00 (---)</div>
+            </div>
+        </section>
+
+        <section class="right">
+            <div class="panel">
+                <div class="inputs">
+                    <div class="field">
+                        <label for="titleInput">タイトル</label>
+                        <input id="titleInput" type="text" placeholder="例）提出〆切 / 休憩終了 / 会議開始" autocomplete="off" />
+                    </div>
+                    <div class="field">
+                        <label for="dtInput">指定日時</label>
+                        <!-- autocompleteオフは保険。値の保持には影響しないが勝手な置換を避ける -->
+                        <input id="dtInput" type="datetime-local" step="1" autocomplete="off" />
+                    </div>
+                    <div>
+                        <button id="addBtn">追加</button>
+                        <div class="cap" id="capMsg">最大3件まで登録可能</div>
+                    </div>
+                </div>
+                <div class="error" id="errorMsg"></div>
+            </div>
+
+            <div class="panel">
+                <div class="list" id="list"></div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        // 現在時刻
+        const nowClock = document.getElementById("nowClock");
+        const nowDate = document.getElementById("nowDate");
+        function two(n) { return String(n).padStart(2, "0"); }
+        function weekdayJP(w) { return ["日", "月", "火", "水", "木", "金", "土"][w] || "-"; }
+        function updateNow() {
+            const now = new Date();
+            nowClock.textContent = `${two(now.getHours())}:${two(now.getMinutes())}:${two(now.getSeconds())}`;
+            nowDate.textContent = `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}（${weekdayJP(now.getDay())}）`;
+        }
+        updateNow();
+        setInterval(updateNow, 1000);
+
+        // 入力とリスト
+        const addBtn = document.getElementById("addBtn");
+        const titleInp = document.getElementById("titleInput");
+        const dtInp = document.getElementById("dtInput");
+        const list = document.getElementById("list");
+        const errMsg = document.getElementById("errorMsg");
+        const capMsg = document.getElementById("capMsg");
+
+        const timers = []; // { id, title, endAt, node, timeEl, zeroAt }
+
+        function toLocalDatetimeValue(dt) {
+            const y = dt.getFullYear();
+            const mo = two(dt.getMonth() + 1);
+            const d = two(dt.getDate());
+            const h = two(dt.getHours());
+            const m = two(dt.getMinutes());
+            const s = two(dt.getSeconds());
+            return `${y}-${mo}-${d}T${h}:${m}:${s}`;
+        }
+
+        // ▼ 修正点：min は初期化時に一度だけ設定。入力中は絶対に触らない。
+        (function initMin() {
+            const min = new Date();
+            min.setSeconds(min.getSeconds() + 1);
+            dtInp.min = toLocalDatetimeValue(min);
+        })();
+
+        function showError(msg) { errMsg.textContent = msg; }
+        function clearError() { errMsg.textContent = ""; }
+        function updateCapacityHint() {
+            const remain = 3 - timers.length;
+            capMsg.textContent = remain <= 0 ? "登録上限に達しました" : `最大3件まで登録可能（残り ${remain} 件）`;
+            addBtn.disabled = remain <= 0;
+        }
+        updateCapacityHint();
+
+        function formatHMS(totalSec) {
+            if (totalSec < 0) totalSec = 0;
+            const h = Math.floor(totalSec / 3600);
+            const m = Math.floor((totalSec % 3600) / 60);
+            const s = totalSec % 60;
+            return `${two(Math.min(h, 99))}:${two(m)}:${two(s)}`;
+        }
+
+        function validate(title, endAt) {
+            const now = new Date();
+            if (!title || title.trim() === "") return "タイトルを入力してください。";
+            if (!(endAt instanceof Date) || isNaN(endAt.getTime())) return "指定日時が不正です。";
+            if (endAt <= now) return "指定日時が現在時刻より過去です。未来の日時を指定してください。";
+            const diffSec = Math.floor((endAt - now) / 1000);
+            if (diffSec > 99 * 3600 + 59 * 60 + 59) return "指定時間は現在から99:59:59を超えています。範囲内で指定してください。";
+            if (timers.length >= 3) return "登録できるカウントダウンは最大3つです。";
+            return null;
+        }
+
+        function createItemNode(title) {
+            const node = document.createElement("div");
+            node.className = "item";
+            const t = document.createElement("div");
+            t.className = "title";
+            t.textContent = title;
+            const u = document.createElement("div");
+            u.className = "until";
+            u.textContent = " の時間まで";
+            const tl = document.createElement("div");
+            tl.className = "timeleft";
+            tl.textContent = "00:00:00";
+            node.append(t, u, tl);
+            return { node, timeEl: tl };
+        }
+
+        function addTimer() {
+            clearError();
+            const title = titleInp.value.trim();
+            const raw = dtInp.value;
+            const endAt = new Date(raw);
+
+            const error = validate(title, endAt);
+            if (error) { showError(error); return; }
+
+            const { node, timeEl } = createItemNode(title);
+            list.appendChild(node);
+
+            const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
+            timers.push({ id, title, endAt, node, timeEl, zeroAt: null });
+
+            // 入力クリアは成功時のみ
+            titleInp.value = "";
+            dtInp.value = "";
+
+            updateCapacityHint();
+            tickAll();
+        }
+
+        addBtn.addEventListener("click", addTimer);
+        [titleInp, dtInp].forEach(inp => inp.addEventListener("keydown", e => { if (e.key === "Enter") addTimer(); }));
+
+        function removeTimerById(id) {
+            const idx = timers.findIndex(t => t.id === id);
+            if (idx >= 0) { timers[idx].node.remove(); timers.splice(idx, 1); }
+            updateCapacityHint();
+        }
+
+        function tickAll() {
+            const now = Date.now();
+            timers.forEach(t => {
+                const diffMs = t.endAt.getTime() - now;
+                const diffSec = Math.floor(diffMs / 1000);
+                if (diffSec <= 0) {
+                    t.timeEl.textContent = "00:00:00";
+                    t.timeEl.classList.add("expired");
+                    if (t.zeroAt === null) t.zeroAt = now;
+                    else if (Math.floor((now - t.zeroAt) / 1000) >= 60) removeTimerById(t.id);
+                } else {
+                    t.timeEl.textContent = formatHMS(diffSec);
+                    t.timeEl.classList.remove("expired");
+                    t.zeroAt = null;
+                }
+            });
+        }
+        setInterval(tickAll, 1000);
+    </script>
+</body>
+
+</html>

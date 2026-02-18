@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title> デジタル時計 </title>
+    <style>
+        body {
+            text-align: center;
+            font-size: 48px;
+            font-family: monospace;
+            background: black;
+            color: lime;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="clock">00:00:00</div>
+    <script>
+        function showClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, "0");
+            const m = String(now.getMinutes()).padStart(2, "0");
+            const s = String(now.getSeconds()).padStart(2, "0");
+            document.getElementById("clock").textContent = `${h}:${m}:${s}`;
+        }
+        setInterval(showClock, 1000); // 1 秒ごとに実行
+    </script>
+</body>
+
+</html>

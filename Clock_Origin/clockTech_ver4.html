@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>デジタル時計＋カウントダウン</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            --bg: #000;
+            --fg: #b7ffb7;
+            --accent: #7aff7a;
+            --warning: #ff6b6b;
+            --muted: #9aa19a;
+            --note-title: #7aff7a;
+            --note-msg: #ffe27a;
+            --gap: 12px;
+            /* 行間 */
+            --item-h: 76px;
+            /* 各行の最小高さ（必要なら微調整） */
+            --actions-w: 108px;
+            /* 右端ボタン列の幅 */
+            --list-offset: 0px;
+            /* JSで計算して入れる */
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+            color: var(--fg);
+            background: var(--bg)
+        }
+
+        .wrap {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 24px;
+            min-height: 100vh;
+            padding: 24px
+        }
+
+        /* 左：通知＋現在時刻 */
+        .left {
+            position: relative;
+            display: grid;
+            place-items: center start
+        }
+
+        .notices {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 10%;
+            max-height: 9.5em;
+            overflow: hidden;
+            display: grid;
+            gap: 6px;
+            padding-right: 8px
+        }
+
+        .notice {
+            font-size: 20px;
+            line-height: 1.2;
+            padding: 6px 10px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05)
+        }
+
+        .notice .n-title {
+            color: var(--note-title);
+            font-weight: 800;
+            margin-right: .4em
+        }
+
+        .notice .n-msg {
+            color: var(--note-msg);
+            font-weight: 700
+        }
+
+        #nowClock {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-weight: 800;
+            font-size: clamp(72px, 12vw, 144px);
+            line-height: 1;
+            letter-spacing: .04em;
+            text-shadow: 0 0 8px rgba(122, 255, 122, .35)
+        }
+
+        .subdate {
+            color: var(--muted);
+            margin-top: 12px;
+            font-size: clamp(16px, 2.2vw, 24px);
+            font-weight: 600
+        }
+
+        /* 右側 */
+        .right {
+            display: grid;
+            grid-template-rows: auto 1fr;
+            gap: 16px
+        }
+
+        .panel {
+            border: 1px solid rgba(255, 255, 255, .12);
+            border-radius: 14px;
+            padding: 16px;
+            background: rgba(255, 255, 255, .03);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .04)
+        }
+
+        .inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 12px;
+            align-items: end
+        }
+
+        .field {
+            display: grid;
+            gap: 6px
+        }
+
+        label {
+            font-size: 14px;
+            color: var(--muted);
+            font-weight: 600;
+            letter-spacing: .02em
+        }
+
+        input[type="text"],
+        input[type="datetime-local"] {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, .18);
+            background: rgba(0, 0, 0, .25);
+            color: var(--fg);
+            outline: none
+        }
+
+        input::placeholder {
+            color: #6b6f6b
+        }
+
+        button {
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(122, 255, 122, .35);
+            background: rgba(122, 255, 122, .15);
+            color: var(--fg);
+            font-weight: 700;
+            cursor: pointer
+        }
+
+        button:disabled {
+            opacity: .4;
+            cursor: not-allowed
+        }
+
+        .btn-ghost {
+            border: 1px solid rgba(255, 255, 255, .18);
+            background: rgba(255, 255, 255, .06)
+        }
+
+        .btn-danger {
+            border: 1px solid rgba(255, 107, 107, .45);
+            background: rgba(255, 107, 107, .20)
+        }
+
+        .error {
+            margin-top: 8px;
+            color: var(--warning);
+            font-size: 14px;
+            min-height: 1.2em
+        }
+
+        .cap {
+            color: var(--muted);
+            font-size: 13px;
+            margin-top: 6px
+        }
+
+        /* カウントダウン一覧 */
+        .list-wrapper {
+            margin-top: var(--list-offset)
+        }
+
+        /* ← JSでオフセット反映 */
+        .list {
+            display: grid;
+            gap: var(--gap);
+            align-content: start
+        }
+
+        .item {
+            display: grid;
+            grid-template-columns: 1fr auto var(--actions-w);
+            gap: 14px;
+            padding: 12px 14px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, .04);
+            border: 1px solid rgba(255, 255, 255, .1);
+            min-height: var(--item-h);
+            align-items: center;
+            /* 見出しと時間をボタン列中央に合わせる */
+        }
+
+        .label {
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .title {
+            font-weight: 800;
+            letter-spacing: .02em
+        }
+
+        .until {
+            color: var(--muted)
+        }
+
+        .timeleft {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-weight: 900;
+            font-size: 28px;
+            letter-spacing: .04em;
+            text-shadow: 0 0 6px rgba(122, 255, 122, .25);
+            justify-self: end
+        }
+
+        .expired {
+            color: var(--warning) !important;
+            text-shadow: 0 0 10px rgba(255, 60, 60, .45)
+        }
+
+        .actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: var(--actions-w)
+        }
+
+        .actions>button {
+            width: 100%
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <section class="left">
+            <div class="notices" id="notices"></div>
+            <div>
+                <div id="nowClock">00:00:00</div>
+                <div id="nowDate" class="subdate">0000-00-00 (---)</div>
+            </div>
+        </section>
+
+        <section class="right">
+            <div class="panel">
+                <div class="inputs">
+                    <div class="field">
+                        <label for="titleInput">タイトル</label>
+                        <input id="titleInput" type="text" placeholder="例）提出〆切 / 休憩終了 / 会議開始" autocomplete="off" />
+                    </div>
+                    <div class="field">
+                        <label for="dtInput">指定日時</label>
+                        <input id="dtInput" type="datetime-local" step="1" autocomplete="off" />
+                    </div>
+                    <div>
+                        <button id="addBtn">追加</button>
+                        <div class="cap" id="capMsg">最大5件まで登録可能</div>
+                    </div>
+                </div>
+                <div class="error" id="errorMsg"></div>
+            </div>
+
+            <div class="panel list-wrapper">
+                <div class="list" id="list"></div>
+            </div>
+        </section>
+    </div>
+
+    <script>
+        /* ==== 時計 ==== */
+        const nowClock = document.getElementById("nowClock");
+        const nowDate = document.getElementById("nowDate");
+        const notices = document.getElementById("notices");
+        function two(n) { return String(n).padStart(2, "0") }
+        function weekdayJP(w) { return ["日", "月", "火", "水", "木", "金", "土"][w] || "-" }
+        function updateNow() {
+            const now = new Date();
+            nowClock.textContent = `${two(now.getHours())}:${two(now.getMinutes())}:${two(now.getSeconds())}`;
+            nowDate.textContent = `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())}（${weekdayJP(now.getDay())}）`;
+        }
+        updateNow(); setInterval(updateNow, 1000);
+
+        /* ==== 入力・一覧 ==== */
+        const addBtn = document.getElementById("addBtn");
+        const titleInp = document.getElementById("titleInput");
+        const dtInp = document.getElementById("dtInput");
+        const list = document.getElementById("list");
+        const errMsg = document.getElementById("errorMsg");
+        const capMsg = document.getElementById("capMsg");
+        const listWrapper = document.querySelector(".list-wrapper");
+
+        const MAX_TIMERS = 5;
+        const timers = []; // {id,title,endAt,node,timeEl,zeroAt,notified}
+        let editingId = null;
+
+        function toLocalDatetimeValue(dt) {
+            const y = dt.getFullYear(), mo = two(dt.getMonth() + 1), d = two(dt.getDate()), h = two(dt.getHours()), m = two(dt.getMinutes()), s = two(dt.getSeconds());
+            return `${y}-${mo}-${d}T${h}:${m}:${s}`;
+        }
+        (function initMin() {
+            const min = new Date(); min.setSeconds(min.getSeconds() + 1);
+            dtInp.min = toLocalDatetimeValue(min);
+        })();
+
+        function showError(msg) { errMsg.textContent = msg }
+        function clearError() { errMsg.textContent = "" }
+        function updateCapacityHint() {
+            const remain = MAX_TIMERS - timers.length;
+            capMsg.textContent = remain <= 0 ? "登録上限に達しました" : `最大${MAX_TIMERS}件まで登録可能（残り ${remain} 件）`;
+            addBtn.disabled = remain <= 0 && !editingId;
+        }
+        updateCapacityHint();
+
+        function formatHMS(sec) { if (sec < 0) sec = 0; const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60; return `${two(Math.min(h, 99))}:${two(m)}:${two(s)}` }
+
+        function validate(title, endAt, isEdit = false) {
+            const now = new Date();
+            if (!title || title.trim() === "") return "タイトルを入力してください。";
+            if (!(endAt instanceof Date) || isNaN(endAt.getTime())) return "指定日時が不正です。";
+            if (endAt <= now) return "指定日時が現在時刻より過去です。未来の日時を指定してください。";
+            const diffSec = Math.floor((endAt - now) / 1000);
+            if (diffSec > 99 * 3600 + 59 * 60 + 59) return "指定時間は現在から99:59:59を超えています。範囲内で指定してください。";
+            if (!isEdit && timers.length >= MAX_TIMERS) return `登録できるカウントダウンは最大${MAX_TIMERS}つです。`;
+            return null;
+        }
+
+        function createItemNode(title) {
+            const node = document.createElement("div"); node.className = "item";
+            const label = document.createElement("div"); label.className = "label";
+            const t = document.createElement("div"); t.className = "title"; t.textContent = title;
+            const u = document.createElement("div"); u.className = "until"; u.textContent = " の時間まで";
+            label.append(t, u);
+            const tl = document.createElement("div"); tl.className = "timeleft"; tl.textContent = "00:00:00";
+            const actions = document.createElement("div"); actions.className = "actions";
+            const btnEdit = document.createElement("button"); btnEdit.className = "btn-ghost"; btnEdit.textContent = "変更";
+            const btnDel = document.createElement("button"); btnDel.className = "btn-danger"; btnDel.textContent = "削除";
+            actions.append(btnEdit, btnDel);
+            node.append(label, tl, actions);
+            return { node, timeEl: tl, btnEdit, btnDel, titleEl: t };
+        }
+
+        function addNotice(title) {
+            while (notices.children.length >= 5) notices.removeChild(notices.firstElementChild);
+            const n = document.createElement("div"); n.className = "notice";
+            n.innerHTML = `<span class="n-title">${escapeHTML(title)}</span><span class="n-msg">の指定時間になりました</span>`;
+            notices.appendChild(n); setTimeout(() => n.remove(), 60000);
+        }
+        function escapeHTML(s) { return s.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) }
+
+        function addOrUpdateTimer() {
+            clearError();
+            const title = titleInp.value.trim();
+            const raw = dtInp.value;
+            const endAt = new Date(raw);
+            const isEdit = !!editingId;
+            const error = validate(title, endAt, isEdit);
+            if (error) { showError(error); return; }
+
+            if (isEdit) {
+                const t = timers.find(x => x.id === editingId);
+                if (!t) { editingId = null; return; }
+                t.title = title; t.endAt = endAt; t.zeroAt = null; t.notified = false;
+                t.node.querySelector(".title").textContent = title;
+                editingId = null; addBtn.textContent = "追加";
+            } else {
+                const { node, timeEl, btnEdit, btnDel } = createItemNode(title);
+                list.appendChild(node);
+                const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
+                const timer = { id, title, endAt, node, timeEl, zeroAt: null, notified: false };
+                timers.push(timer);
+                btnEdit.addEventListener("click", () => { titleInp.value = timer.title; dtInp.value = toLocalDatetimeValue(timer.endAt); editingId = timer.id; addBtn.textContent = "追加"; clearError(); });
+                btnDel.addEventListener("click", () => removeTimerById(timer.id));
+            }
+
+            titleInp.value = ""; dtInp.value = "";
+            updateCapacityHint();
+            tickAll();
+            adjustListOffset();   // ← 追加・更新・削除のたびに再配置
+        }
+
+        addBtn.addEventListener("click", addOrUpdateTimer);
+        [titleInp, dtInp].forEach(inp => inp.addEventListener("keydown", e => { if (e.key === "Enter") addOrUpdateTimer(); }));
+
+        function removeTimerById(id) {
+            const idx = timers.findIndex(t => t.id === id);
+            if (idx >= 0) { timers[idx].node.remove(); timers.splice(idx, 1); }
+            if (editingId === id) { editingId = null; addBtn.textContent = "追加"; titleInp.value = ""; dtInp.value = ""; }
+            updateCapacityHint();
+            adjustListOffset();
+        }
+
+        function tickAll() {
+            const now = Date.now();
+            timers.forEach(t => {
+                const diffMs = t.endAt.getTime() - now;
+                const diffSec = Math.floor(diffMs / 1000);
+                if (diffSec <= 0) {
+                    t.timeEl.textContent = "00:00:00";
+                    t.timeEl.classList.add("expired");
+                    if (!t.notified) { t.notified = true; addNotice(t.title); }
+                    if (t.zeroAt === null) { t.zeroAt = now; }
+                    else if (Math.floor((now - t.zeroAt) / 1000) >= 60) { removeTimerById(t.id); }
+                } else {
+                    t.timeEl.textContent = formatHMS(diffSec);
+                    t.timeEl.classList.remove("expired");
+                    t.zeroAt = null;
+                }
+            });
+        }
+        setInterval(tickAll, 1000);
+
+        /* ==== 3件目を画面中央に合わせるオフセット計算 ==== */
+        function px(n) { return parseFloat(getComputedStyle(document.documentElement).getPropertyValue(n)) }
+        function adjustListOffset() {
+            const itemH = px('--item-h');
+            const gap = px('--gap');
+            const thirdCenterFromListTop = 2 * (itemH + gap) + itemH / 2; // 3行目中央までの距離
+            const listTop = listWrapper.getBoundingClientRect().top; // 画面上端からの距離
+            const viewportCenter = window.innerHeight / 2;
+            const needed = viewportCenter - listTop - thirdCenterFromListTop;
+            // マイナスで上に詰めるのは視認性がしんどいので0で打ち止め
+            const offset = Math.max(0, Math.round(needed));
+            document.documentElement.style.setProperty('--list-offset', offset + 'px');
+        }
+        // 初期・リサイズ・スクロール時に調整
+        window.addEventListener('load', adjustListOffset);
+        window.addEventListener('resize', adjustListOffset);
+        window.addEventListener('scroll', adjustListOffset, { passive: true });
+    </script>
+</body>
+
+</html>

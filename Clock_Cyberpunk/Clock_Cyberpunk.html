@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>ネオン虹色デジタル時計</title>
+    <style>
+        body {
+            text-align: center;
+            font-size: 144px;
+            font-family: monospace;
+
+            /* --- ここで背景画像を設定 --- */
+            background-image: url("CPイメージ.png.png"); /* ← ファイル名は必要に応じて調整 */
+            background-size: cover;        /* 全画面にフィット */
+            background-position: center;   /* 中央表示 */
+            background-repeat: no-repeat;  /* 繰り返さない */
+            background-attachment: fixed;  /* 固定でサイバーパンク感UP */
+
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        @keyframes rainbowGlow {
+            0% {
+                color: red;
+                border-color: red;
+                text-shadow: 0 0 20px red, 0 0 40px red;
+            }
+
+            16% {
+                color: orange;
+                border-color: orange;
+                text-shadow: 0 0 20px orange, 0 0 40px orange;
+            }
+
+            32% {
+                color: yellow;
+                border-color: yellow;
+                text-shadow: 0 0 20px yellow, 0 0 40px yellow;
+            }
+
+            48% {
+                color: lime;
+                border-color: lime;
+                text-shadow: 0 0 20px lime, 0 0 40px lime;
+            }
+
+            64% {
+                color: cyan;
+                border-color: cyan;
+                text-shadow: 0 0 20px cyan, 0 0 40px cyan;
+            }
+
+            82% {
+                color: blue;
+                border-color: blue;
+                text-shadow: 0 0 20px blue, 0 0 40px blue;
+            }
+
+            100% {
+                color: violet;
+                border-color: violet;
+                text-shadow: 0 0 20px violet, 0 0 40px violet;
+            }
+        }
+
+        #clock {
+            padding: 40px 70px;
+            border: 10px solid;
+            border-radius: 30px;
+            animation: rainbowGlow 3s linear infinite;
+            background: rgba(0, 0, 0, 0.35); /* 半透明で視認性UP */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="clock">00:00:00</div>
+
+    <script>
+        function showClock() {
+            const now = new Date();
+            const h = String(now.getHours()).padStart(2, "0");
+            const m = String(now.getMinutes()).padStart(2, "0");
+            const s = String(now.getSeconds()).padStart(2, "0");
+            document.getElementById("clock").textContent = `${h}:${m}:${s}`;
+        }
+
+        setInterval(showClock, 1000);
+        showClock();
+    </script>
+</body>
+
+</html>
