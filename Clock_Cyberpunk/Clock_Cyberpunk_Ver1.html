@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>ネオン虹色カウントダウン（1分）</title>
+    <style>
+        body {
+            text-align: center;
+            font-size: 80px;
+            font-family: monospace;
+
+            background-image: url("CPイメージ.jpeg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+
+
+            color: white;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        @keyframes rainbowGlow {
+            0% {
+                color: red;
+                border-color: red;
+                text-shadow: 0 0 20px red, 0 0 40px red;
+            }
+
+            16% {
+                color: orange;
+                border-color: orange;
+                text-shadow: 0 0 20px orange, 0 0 40px orange;
+            }
+
+            32% {
+                color: yellow;
+                border-color: yellow;
+                text-shadow: 0 0 20px yellow, 0 0 40px yellow;
+            }
+
+            48% {
+                color: lime;
+                border-color: lime;
+                text-shadow: 0 0 20px lime, 0 0 40px lime;
+            }
+
+            64% {
+                color: cyan;
+                border-color: cyan;
+                text-shadow: 0 0 20px cyan, 0 0 40px cyan;
+            }
+
+            82% {
+                color: blue;
+                border-color: blue;
+                text-shadow: 0 0 20px blue, 0 0 40px blue;
+            }
+
+            100% {
+                color: violet;
+                border-color: violet;
+                text-shadow: 0 0 20px violet, 0 0 40px violet;
+            }
+        }
+
+        /* メッセージ用フェードアニメーション */
+        @keyframes fadeInOut {
+            0% {
+                opacity: 0;
+            }
+
+            23% {
+                opacity: 1;
+            }
+
+            77% {
+                opacity: 1;
+            }
+
+            100% {
+                opacity: 0;
+            }
+        }
+
+        #clock {
+            padding: 40px 70px;
+            border: 10px solid;
+            border-radius: 30px;
+            animation: rainbowGlow 3s linear infinite;
+            background: rgba(0, 0, 0, 0.35);
+        }
+
+        /* 各メッセージ表示時に 3秒間 fade-in/out させるクラス */
+        .fade-message {
+            animation: fadeInOut 3s ease-in-out;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="clock">1:00</div>
+
+    <script>
+        // 1分（60秒）
+        let remaining = 1 * 60;
+
+        const clockEl = document.getElementById("clock");
+
+        // カウントダウンタイマーID
+        let countdownTimerId = null;
+        // メッセージ切り替え用
+        const messages = [
+            "お前が戻ってくるって、俺は信じてる！",
+            "I know you will be back"
+        ];
+        let messageIndex = 0;
+        let messageTimerId = null;
+
+        // カウントダウン表示更新
+        function updateCountdown() {
+            const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
+            const seconds = String(remaining % 60).padStart(2, "0");
+
+            clockEl.textContent = `${minutes}:${seconds}`;
+
+            if (remaining > 0) {
+                remaining--;
+            } else {
+                // カウントダウン終了
+                clearInterval(countdownTimerId);
+                startMessageSequence();
+            }
+        }
+
+        // メッセージを交互に表示する処理
+        function startMessageSequence() {
+            function showMessage() {
+                // メッセージ設定
+                clockEl.textContent = messages[messageIndex];
+                messageIndex = (messageIndex + 1) % messages.length;
+
+                // アニメーションをリセットして毎回再生させる
+                clockEl.classList.remove("fade-message");
+                // リフローを発生させてアニメーションを再適用
+                void clockEl.offsetWidth;
+                clockEl.classList.add("fade-message");
+            }
+
+            // すぐに一回表示
+            showMessage();
+            // 3秒ごとに交互に表示
+            messageTimerId = setInterval(showMessage, 3000);
+        }
+
+        // 1秒ごとにカウントダウン更新
+        countdownTimerId = setInterval(updateCountdown, 1000);
+        // 初期表示
+        updateCountdown();
+    </script>
+</body>
+
+</html>
