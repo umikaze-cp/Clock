@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>ネオン虹色カウントダウン（1分）</title>
+  <style>
+    body {
+      text-align: center;
+      font-size: 80px;
+      font-family: monospace;
+      background-image: url("CPイメージ.jpeg");
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      color: white;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    @keyframes rainbowGlow {
+      0% { color: red; border-color: red; text-shadow: 0 0 20px red, 0 0 40px red; }
+      16% { color: orange; border-color: orange; text-shadow: 0 0 20px orange, 0 0 40px orange; }
+      32% { color: yellow; border-color: yellow; text-shadow: 0 0 20px yellow, 0 0 40px yellow; }
+      48% { color: lime; border-color: lime; text-shadow: 0 0 20px lime, 0 0 40px lime; }
+      64% { color: cyan; border-color: cyan; text-shadow: 0 0 20px cyan, 0 0 40px cyan; }
+      82% { color: blue; border-color: blue; text-shadow: 0 0 20px blue, 0 0 40px blue; }
+      100% { color: violet; border-color: violet; text-shadow: 0 0 20px violet, 0 0 40px violet; }
+    }
+
+    @keyframes fadeInOut {
+      0% { opacity: 0; }
+      23% { opacity: 1; }
+      77% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    #clock {
+      padding: 40px 70px;
+      border: 10px solid;
+      border-radius: 30px;
+      animation: rainbowGlow 3s linear infinite;
+      background: rgba(0, 0, 0, 0.35);
+      z-index: 1;
+    }
+
+    .fade-message { animation: fadeInOut 3s ease-in-out; }
+
+    /* 開始ボタン（自動再生制限対策） */
+    #startOverlay {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: rgba(0,0,0,0.55);
+      z-index: 10;
+    }
+    #startBtn {
+      font-size: 28px;
+      padding: 18px 28px;
+      border-radius: 14px;
+      border: 2px solid rgba(255,255,255,0.7);
+      background: rgba(0,0,0,0.4);
+      color: #fff;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="startOverlay">
+    <button id="startBtn">▶ スタート</button>
+  </div>
+
+  <div id="clock">01:00</div>
+
+  <!-- 音素材（ファイル名を差し替えてね） -->
+  <!-- A: カウントダウン中BGM -->
+  <audio id="soundA" src="BGM.mp3" preload="auto" loop></audio>
+
+  <!-- B: エンジン始動音 -->
+  <audio id="soundB" src="bike_A.mp3" preload="auto"></audio>
+
+  <!-- C: 出発音 -->
+  <audio id="soundC" src="bike_B.mp3" preload="auto"></audio>
+
+  <script>
+    // ====== 設定 ======
+    let remaining = 1 * 60; // 1分
+    const messages = [
+      "お前が戻ってくるって、俺は信じてる！",
+      "I know you will be back"
+    ];
+
+    // ====== 要素 ======
+    const clockEl = document.getElementById("clock");
+    const startOverlay = document.getElementById("startOverlay");
+    const startBtn = document.getElementById("startBtn");
+
+    const soundA = document.getElementById("soundA");
+    const soundB = document.getElementById("soundB");
+    const soundC = document.getElementById("soundC");
+
+    // ====== タイマー ======
+    let countdownTimerId = null;
+    let messageTimerId = null;
+
+    // ====== メッセージ ======
+    let messageIndex = 0;
+
+    function startMessageSequence() {
+      function showMessage() {
+        clockEl.textContent = messages[messageIndex];
+        messageIndex = (messageIndex + 1) % messages.length;
+
+        clockEl.classList.remove("fade-message");
+        void clockEl.offsetWidth;
+        clockEl.classList.add("fade-message");
+      }
+
+      showMessage();
+      messageTimerId = setInterval(showMessage, 3000);
+    }
+
+    // ====== 音のシーケンス制御 ======
+    let engineLoopsLeft = 5;
+    let cycleMode = false; // trueになったら(B→C)無限ループ
+
+    function stopAllSounds() {
+      [soundA, soundB, soundC].forEach(a => {
+        a.pause();
+        a.currentTime = 0;
+      });
+    }
+
+    // Bを「loop属性」で無限にしない。endedで手動制御する
+    soundB.addEventListener("ended", () => {
+      if (!cycleMode) {
+        // まずはBを5回ループ
+        engineLoopsLeft--;
+        if (engineLoopsLeft > 0) {
+          soundB.currentTime = 0;
+          soundB.play().catch(()=>{});
+        } else {
+          // B 5回終わったらCへ
+          soundC.currentTime = 0;
+          soundC.play().catch(()=>{});
+        }
+      } else {
+        // 無限ループモード中は、Bが終わったらCへ
+        soundC.currentTime = 0;
+        soundC.play().catch(()=>{});
+      }
+    });
+
+    soundC.addEventListener("ended", () => {
+      // Cが終わったら(B→C)の無限ループ開始
+      cycleMode = true;
+      soundB.currentTime = 0;
+      soundB.play().catch(()=>{});
+    });
+
+    function startFinishSoundSequence() {
+      // Aを止める
+      soundA.pause();
+      soundA.currentTime = 0;
+
+      // Bを5回 → C → 以降(B→C)無限
+      engineLoopsLeft = 5;
+      cycleMode = false;
+
+      soundB.currentTime = 0;
+      soundB.play().catch(()=>{});
+    }
+
+    // ====== カウントダウン ======
+    function updateCountdown() {
+      const minutes = String(Math.floor(remaining / 60)).padStart(2, "0");
+      const seconds = String(remaining % 60).padStart(2, "0");
+      clockEl.textContent = `${minutes}:${seconds}`;
+
+      if (remaining > 0) {
+        remaining--;
+      } else {
+        clearInterval(countdownTimerId);
+        startMessageSequence();
+        startFinishSoundSequence();
+      }
+    }
+
+    function startAll() {
+      startOverlay.style.display = "none";
+
+      // カウントダウン中BGM(A)
+      soundA.volume = 0.6; // 好きに調整
+      soundA.play().catch(()=>{});
+
+      // タイマー開始
+      countdownTimerId = setInterval(updateCountdown, 1000);
+      updateCountdown();
+    }
+
+    // 開始ボタン（自動再生制限回避）
+    startBtn.addEventListener("click", () => {
+      // 念のため初期化
+      stopAllSounds();
+      remaining = 1 * 60;
+      startAll();
+    });
+  </script>
+</body>
+</html>
