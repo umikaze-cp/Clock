@@ -302,7 +302,7 @@
     }
 
     // ====== 音のシーケンス制御 ======
-    let engineLoopsLeft = 4;
+    let engineLoopsLeft = 2;
     let cycleMode = false; // trueになったら(B→C)無限ループ
 
     function stopAllSounds() {
@@ -369,7 +369,7 @@
       // soundA.pause();
       // soundA.currentTime = 0;
 
-      engineLoopsLeft = 4;
+      engineLoopsLeft = 2;
       cycleMode = false;
 
       soundB.currentTime = 0;
